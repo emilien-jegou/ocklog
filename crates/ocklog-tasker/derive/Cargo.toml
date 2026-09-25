@@ -1,0 +1,17 @@
+[package]
+name = "ocklog-tasker-derive"
+description = "Derive crate for ocklog-tasker"
+license = "MIT OR Apache-2.0"
+version = "0.1.0"
+edition = "2021"
+readme = "readme.md"
+homepage = "https://github.com/emilien-jegou/ocklog"
+repository = "https://github.com/emilien-jegou/ocklog"
+
+[lib]
+proc-macro = true
+path = "./lib.rs"
+
+[dependencies]
+syn = { version = "2.0", features = ["full"] }
+quote = "1.0"

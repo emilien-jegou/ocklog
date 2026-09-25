@@ -1,0 +1,26 @@
+[package]
+name = "ocklog"
+version = "0.2.1"
+edition = "2021"
+publish = false
+description = "A modern TUI tool for docker logs"
+license = "GPL-3.0"
+
+[dependencies]
+ocklog-tasker = { path = "../ocklog-tasker" }
+regex = { workspace = true }
+tokio = { workspace = true }
+ratatui = { workspace = true }
+crossterm = { workspace = true }
+tracing = { workspace = true }
+tracing-error = { workspace = true }
+tracing-subscriber = { workspace = true }
+tracing-appender = { workspace = true }
+tracing-flame = { workspace = true }
+clap = { workspace = true }
+typed-builder = { workspace = true }
+eyre = { workspace = true }
+parking_lot = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+libc = { workspace = true }
