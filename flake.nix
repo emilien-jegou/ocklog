@@ -38,7 +38,7 @@
         packages = {
           ocklog = rustPlatform.buildRustPackage (commonBuildArgs // {
             pname = "ocklog";
-            version = "0.2.1";
+            version = "0.0.2";
           });
 
           default = pkgs.symlinkJoin {

@@ -17,6 +17,7 @@
 * ⌨️ **Vim Navigation** vim style navigation and clipboard support
 * 📦 **Services Switcher** turn services on/off without leaving the ui.
 * 🎨 **Always beautiful** themed derived from your terminal ANSI colors
+* **Container control** *s*tart, *k*ill and *r*estart containers in one key press.
 
 ---
 
