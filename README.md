@@ -1,6 +1,9 @@
 # ocklog
 
 ![GitHub top language](https://img.shields.io/github/languages/top/emilien-jegou/ocklog)
+[![Crates.io](https://img.shields.io/crates/v/ocklog.svg)](https://crates.io/crates/ocklog)
+![Cargo Downloads](https://img.shields.io/crates/d/ocklog?label=cargo)
+![GitHub Downloads](https://img.shields.io/github/downloads/emilien-jegou/ocklog/total?label=github)
 [![Nix Flake](https://img.shields.io/badge/nix-flake-5277C3?logo=nixos&logoColor=white)](https://github.com/emilien-jegou/ocklog)
 [![dependency status](https://deps.rs/crate/ocklog/latest/status.svg)](https://deps.rs/crate/ocklog/latest)
 
@@ -18,6 +21,7 @@
 * 📦 **Services Switcher** turn services on/off without leaving the ui.
 * 🎨 **Always beautiful** themed derived from your terminal ANSI colors
 * **Container control** *s*tart, *k*ill and *r*estart containers in one key press.
+* 🪄 An intuitive **work as you expect** UX without magic.
 
 ---
 
