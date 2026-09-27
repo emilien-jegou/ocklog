@@ -37,12 +37,9 @@ pub struct LogTransformer;
 impl LogTransformer {
     pub fn from_raw_bytes(service: &str, _is_stderr: bool, raw_bytes: &[u8]) -> Option<ProcessedLogRecord> {
         let line = String::from_utf8_lossy(raw_bytes);
-        let trimmed = line.trim_matches(['\r', '\n']);
-        if trimmed.trim().is_empty() {
-            return None;
-        }
+        let clean_line = line.trim_end_matches(['\r', '\n']);
 
-        let (timestamp_rfc3339, content_str) = extract_timestamp(trimmed);
+        let (timestamp_rfc3339, content_str) = extract_timestamp(clean_line);
         let timestamp_secs = timestamp_rfc3339.as_deref().and_then(TimeFormatter::parse_rfc3339_secs);
         let (content, segments) = parse_ansi(content_str);
 
@@ -90,7 +87,8 @@ fn extract_timestamp(raw: &str) -> (Option<String>, &str) {
         if let Some(space_idx) = raw.find(' ') {
             if space_idx <= 36 {
                 let ts = &raw[..space_idx];
-                return (Some(TimeFormatter::normalize_rfc3339(ts)), raw[space_idx + 1..].trim_start());
+                let msg = &raw[space_idx + 1..];
+                return (Some(TimeFormatter::normalize_rfc3339(ts)), msg);
             }
         }
     }
