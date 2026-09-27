@@ -245,6 +245,14 @@ impl InputDispatcher {
                 ctx.ui.picker.set_all(false);
                 Self::reapply_active_filter(ctx);
             }
+            (KeyCode::Char('D'), _) => {
+                *ctx.pending_g = false;
+                ctx.ui.picker.options.retain(|o| !o.is_removed);
+                if ctx.ui.picker.selected_idx >= ctx.ui.picker.options.len() {
+                    ctx.ui.picker.selected_idx = ctx.ui.picker.options.len().saturating_sub(1);
+                }
+                Self::reapply_active_filter(ctx);
+            }
             (KeyCode::Char('r'), KeyModifiers::NONE) => {
                 Self::dispatch_container_action(ctx, |c, id| async move { let _ = c.restart(&id).await; });
             }

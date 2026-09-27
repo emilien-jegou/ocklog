@@ -4,6 +4,7 @@ pub struct ServicePickerOption {
     pub name: String,
     pub is_running: bool,
     pub has_error: bool,
+    pub is_removed: bool,
     pub enabled: bool,
 }
 

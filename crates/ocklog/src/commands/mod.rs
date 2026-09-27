@@ -38,9 +38,15 @@ pub async fn run(opts: RunOptions) -> eyre::Result<()> {
     let theme = UiTheme::default();
 
     let (status_tx, mut status_rx) = unbounded_channel::<(String, bool, bool)>();
-    let (container_list_tx, mut container_list_rx) = unbounded_channel::<Vec<ServicePickerOption>>();
+    let (container_list_tx, mut container_list_rx) =
+        unbounded_channel::<Vec<ServicePickerOption>>();
 
-    spawn_background_ingestion(Arc::clone(&docker), services.logging.sender(), status_tx, container_list_tx);
+    spawn_background_ingestion(
+        Arc::clone(&docker),
+        services.logging.sender(),
+        status_tx,
+        container_list_tx,
+    );
 
     let mut pending_g = false;
     let mut last_scroll = Instant::now();
@@ -57,8 +63,16 @@ pub async fn run(opts: RunOptions) -> eyre::Result<()> {
             }
         }
 
-        let ref_now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs();
-        let svc_map: HashMap<String, bool> = ui_state.picker.options.iter().map(|o| (o.name.clone(), o.enabled)).collect();
+        let ref_now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
+        let svc_map: HashMap<String, bool> = ui_state
+            .picker
+            .options
+            .iter()
+            .map(|o| (o.name.clone(), o.enabled))
+            .collect();
 
         let new_logs_count = services.sync(&svc_map, ref_now);
         if new_logs_count > 0 && ui_state.sticky {
@@ -69,8 +83,14 @@ pub async fn run(opts: RunOptions) -> eyre::Result<()> {
             }
         }
 
-        let is_input = services.filter.prompt().mode == crate::services::filter::prompt_state::PromptMode::Active || ui_state.picker.is_searching;
-        let cursor_shape = if is_input { SetCursorStyle::SteadyBar } else { SetCursorStyle::SteadyBlock };
+        let is_input = services.filter.prompt().mode
+            == crate::services::filter::prompt_state::PromptMode::Active
+            || ui_state.picker.is_searching;
+        let cursor_shape = if is_input {
+            SetCursorStyle::SteadyBar
+        } else {
+            SetCursorStyle::SteadyBlock
+        };
         let _ = execute!(stdout(), cursor_shape);
 
         terminal.draw(|f| {
@@ -102,17 +122,27 @@ pub async fn run(opts: RunOptions) -> eyre::Result<()> {
     Ok(())
 }
 
-fn merge_service_options(current: &mut Vec<ServicePickerOption>, incoming: Vec<ServicePickerOption>) {
-    let existing_states: HashMap<String, bool> = current.iter().map(|o| (o.id.clone(), o.enabled)).collect();
-    let mut updated = Vec::with_capacity(incoming.len());
+fn merge_service_options(
+    current: &mut Vec<ServicePickerOption>,
+    incoming: Vec<ServicePickerOption>,
+) {
+    let mut incoming_map: HashMap<String, ServicePickerOption> =
+        incoming.into_iter().map(|o| (o.id.clone(), o)).collect();
 
-    for mut inc in incoming {
-        if let Some(&prev_enabled) = existing_states.get(&inc.id) {
-            inc.enabled = prev_enabled;
+    for existing in current.iter_mut() {
+        if let Some(fresh) = incoming_map.remove(&existing.id) {
+            existing.is_running = fresh.is_running;
+            existing.has_error = fresh.has_error;
+            existing.is_removed = false;
+        } else {
+            existing.is_running = false;
+            existing.is_removed = true;
         }
-        updated.push(inc);
     }
-    *current = updated;
+
+    for (_, new_opt) in incoming_map {
+        current.push(new_opt);
+    }
 }
 
 fn handle_edge_drag(ui: &mut AppUiState, services: &ServiceRegistry, last_scroll: &mut Instant) {
@@ -143,7 +173,9 @@ fn handle_edge_drag(ui: &mut AppUiState, services: &ServiceRegistry, last_scroll
         let prev_scroll = ui.scroll_offset;
         ui.drag_scroll_viewport_down(1, total);
         if ui.scroll_offset != prev_scroll {
-            let visible_bottom_row = (ui.scroll_offset + ui.viewport_height).saturating_sub(1).min(total.saturating_sub(1));
+            let visible_bottom_row = (ui.scroll_offset + ui.viewport_height)
+                .saturating_sub(1)
+                .min(total.saturating_sub(1));
             if let Some((_, c)) = ui.mouse_head {
                 ui.mouse_head = Some((visible_bottom_row, c));
             }
@@ -154,13 +186,19 @@ fn handle_edge_drag(ui: &mut AppUiState, services: &ServiceRegistry, last_scroll
 
 fn spawn_background_ingestion(
     docker: Arc<DockerEngine>,
-    log_tx: tokio::sync::mpsc::UnboundedSender<crate::services::container_logging::transformer::ProcessedLogRecord>,
+    log_tx: tokio::sync::mpsc::UnboundedSender<
+        crate::services::container_logging::transformer::ProcessedLogRecord,
+    >,
     status_tx: tokio::sync::mpsc::UnboundedSender<(String, bool, bool)>,
     picker_tx: tokio::sync::mpsc::UnboundedSender<Vec<ServicePickerOption>>,
 ) {
     tokio::spawn(async move {
         if !docker.is_available() {
-            let _ = log_tx.send(crate::services::container_logging::transformer::LogTransformer::system_notice("Docker socket /var/run/docker.sock not found."));
+            let _ = log_tx.send(
+                crate::services::container_logging::transformer::LogTransformer::system_notice(
+                    "Docker socket /var/run/docker.sock not found.",
+                ),
+            );
             return;
         }
 
@@ -172,34 +210,53 @@ fn spawn_background_ingestion(
                     let docker_c = Arc::clone(&docker);
                     let cid = c.id.clone();
                     let name = c.primary_name.clone();
-                    let tail = if c.is_running || c.has_error { 1000 } else { 100 };
+                    let tail = if c.is_running || c.has_error {
+                        1000
+                    } else {
+                        100
+                    };
                     let tx = log_tx.clone();
 
                     tokio::spawn(async move {
-                        let params = crate::services::container_logging::pipeline::LoggingPipelineParams {
-                            container_id: &cid,
-                            service_name: &name,
-                            follow: false,
-                            tail: Some(tail),
-                        };
+                        let params =
+                            crate::services::container_logging::pipeline::LoggingPipelineParams {
+                                container_id: &cid,
+                                service_name: &name,
+                                follow: false,
+                                tail: Some(tail),
+                            };
                         let _ = crate::services::container_logging::pipeline::LoggingPipeline::run_stream(&docker_c, params, tx).await;
                     });
                 }
 
                 for c in &containers {
                     if c.is_running {
-                        spawn_container_stream(Arc::clone(&docker), c.id.clone(), c.primary_name.clone(), log_tx.clone());
+                        spawn_container_stream(
+                            Arc::clone(&docker),
+                            c.id.clone(),
+                            c.primary_name.clone(),
+                            log_tx.clone(),
+                        );
                     }
                 }
 
                 if let Ok(mut sub) = docker.subscribe_events().await {
                     while let Some(evt) = sub.next_event().await {
-                        let _ = status_tx.send((evt.container_id.clone(), evt.is_running, evt.has_error));
+                        let _ = status_tx.send((
+                            evt.container_id.clone(),
+                            evt.is_running,
+                            evt.has_error,
+                        ));
                         let processed = crate::services::container_logging::transformer::LogTransformer::from_system_event(&evt);
                         let _ = log_tx.send(processed);
 
                         if evt.is_running {
-                            spawn_container_stream(Arc::clone(&docker), evt.container_id.clone(), evt.container_name.clone(), log_tx.clone());
+                            spawn_container_stream(
+                                Arc::clone(&docker),
+                                evt.container_id.clone(),
+                                evt.container_name.clone(),
+                                log_tx.clone(),
+                            );
                         }
 
                         if let Ok(fresh_containers) = docker.containers().list(true).await {
@@ -209,7 +266,11 @@ fn spawn_background_ingestion(
                 }
             }
             Err(e) => {
-                let _ = log_tx.send(crate::services::container_logging::transformer::LogTransformer::system_notice(&format!("Docker daemon error: {}. Check socket permissions.", e)));
+                let _ = log_tx.send(
+                    crate::services::container_logging::transformer::LogTransformer::system_notice(
+                        &format!("Docker daemon error: {}. Check socket permissions.", e),
+                    ),
+                );
             }
         }
     });
@@ -219,13 +280,17 @@ fn dispatch_picker_options(
     containers: &[crate::libs::docker::ContainerSummary],
     tx: &tokio::sync::mpsc::UnboundedSender<Vec<ServicePickerOption>>,
 ) {
-    let options: Vec<_> = containers.iter().map(|c| ServicePickerOption {
-        id: c.id.clone(),
-        name: c.primary_name.clone(),
-        is_running: c.is_running,
-        has_error: c.has_error,
-        enabled: true,
-    }).collect();
+    let options: Vec<_> = containers
+        .iter()
+        .map(|c| ServicePickerOption {
+            id: c.id.clone(),
+            name: c.primary_name.clone(),
+            is_running: c.is_running,
+            is_removed: false,
+            has_error: c.has_error,
+            enabled: true,
+        })
+        .collect();
     let _ = tx.send(options);
 }
 
@@ -233,7 +298,9 @@ fn spawn_container_stream(
     docker: Arc<DockerEngine>,
     id: String,
     name: String,
-    tx: tokio::sync::mpsc::UnboundedSender<crate::services::container_logging::transformer::ProcessedLogRecord>,
+    tx: tokio::sync::mpsc::UnboundedSender<
+        crate::services::container_logging::transformer::ProcessedLogRecord,
+    >,
 ) {
     tokio::spawn(async move {
         let params = crate::services::container_logging::pipeline::LoggingPipelineParams {
@@ -242,6 +309,9 @@ fn spawn_container_stream(
             follow: true,
             tail: Some(0),
         };
-        let _ = crate::services::container_logging::pipeline::LoggingPipeline::run_stream(&docker, params, tx).await;
+        let _ = crate::services::container_logging::pipeline::LoggingPipeline::run_stream(
+            &docker, params, tx,
+        )
+        .await;
     });
 }
