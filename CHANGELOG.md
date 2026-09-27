@@ -1,3 +1,8 @@
+## [0.0.3] - 2026-09-27
+
+### Bug Fixes
+- Prevent start log trimming in transformer — [`413536f`](https://github.com/emilien-jegou/ocklog/commit/413536f5f82c3d0a2fca06866b7a3d16d2fdedf3) by emilien-jegou
+
 ## [0.0.2] - 2026-09-26
 
 First release of the project with:
